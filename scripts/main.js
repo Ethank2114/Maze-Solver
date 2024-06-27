@@ -31,6 +31,32 @@ function remove(item, list) {
 	list.slice(index, 1);
 }
 
+function mixColor(oldColor, strength = 1) {
+
+	if(strength < 1) {
+		let percent = Math.ceil(strength * 100);
+		// console.log("percent", percent)
+		if(randInt(0, 100) > percent) {
+			return oldColor
+		}
+		strength = 1;
+	}
+
+	let rgb = oldColor.replace(/[^\d,]/g, '').split(',');
+	let shift = randInt(-1 * strength, strength);
+	let part = randInt(0, 2);
+
+	rgb[part] = parseInt(rgb[part]) + shift;
+
+	if(rgb[part] > 255 || rgb[part] < 0) {
+		rgb[part] += shift * -2;
+	}
+
+	rgb[part] = rgb[part].toString();
+
+	return "rgb(" + rgb[0].toString() + ", "+ rgb[1].toString() + ", " + rgb[2].toString() + ")";
+}
+
 class Stack {
 	constructor() {
 		this.contents = []
@@ -66,7 +92,7 @@ class Backtracking extends MazeAlgorithm {
 		super(map, startNode);
 	}
 
-	static iterate() {
+	static iterate(scene) {
 		/*
 	
 		select random unvisited node
@@ -106,6 +132,13 @@ class Backtracking extends MazeAlgorithm {
 
 		// add current to stack
 		this.stack.push(this.current)
+		
+		// next.color = mixColor(this.current.color, 5);
+
+		this.current.draw(scene.context, scene.tileSize);
+		this.current.drawEdges(scene.context, scene.tileSize);
+
+		
 
 		this.current = next;
 
@@ -120,21 +153,60 @@ class Node {
 		this.y = y;
 		this.visited = false;
 		this.edges = [];
+		this.color = "white";
+	}
+
+	draw(context, tileSize) {
+		drawRect({
+			context: context, 
+			x: (2 * this.x + 1) * tileSize, 
+			y: (2 * this.y + 1) * tileSize, 
+			width: tileSize, 
+			height: tileSize,
+			color: this.color
+		});
+	}
+
+	drawEdges(context, tileSize) {
+		for(let edge of this.edges) {
+			drawRect({
+				context: context, 
+				x: (this.x + edge.x + 1) * tileSize, 
+				y: (this.y + edge.y + 1) * tileSize, 
+				width: tileSize, 
+				height: tileSize,
+				color: edge.color
+			});
+			edge.draw(context, tileSize);
+		}
 	}
 }
+
+var TILE_SIZE = 20;
+var REFRESH_RATE = 5;
+var SPEED = 1;
 
 class Scene {
 	constructor(canvas) {
 		this.canvas = canvas;
 		this.context = canvas.getContext("2d");
 		this.map = null;
-		this.tileSize = 1;
+		this.tileSize = TILE_SIZE;
 		this.mazeAlgorithm = null;
 
 		this.populateMap();
 	}
 
 	populateMap() {
+
+		// temp canvas resizing code
+		if(this.canvas.width % this.tileSize === 0) {
+			this.canvas.width += this.tileSize;
+		}
+		if(this.canvas.height % this.tileSize === 0) {
+			this.canvas.height += this.tileSize;
+		}
+
 		let width = ((this.canvas.width / this.tileSize) - 1) / 2;
 		let height = ((this.canvas.height / this.tileSize) - 1) / 2;
 		this.map = [];
@@ -193,10 +265,11 @@ class Scene {
 		this.mazeAlgorithm.map = this.map;
 		this.mazeAlgorithm.current = this.map[0][0];
 		this.mazeAlgorithm.current.visited = true;
+		// this.mazeAlgorithm.current.color = "rgb(66, 220, 200)";
 	}
 
 	iterate() {
-		this.mazeAlgorithm.iterate();
+		this.mazeAlgorithm.iterate(this);
 	}
 }
 
@@ -208,10 +281,12 @@ function main() {
 
 	theScene.setAlgorithm(Backtracking);
 
-	setInterval(function() {
-		theScene.iterate();
-		theScene.drawMap();
-	}, 0.01);
+	let ptr = setInterval(function() {
+		for(let i = 0; i < SPEED; i++) {
+			theScene.iterate();
+		}
+		
+	}, REFRESH_RATE);
 
 }
 

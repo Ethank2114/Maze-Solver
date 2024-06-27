@@ -2,3 +2,21 @@ body {
 	background-color: rgb(30, 30, 25);
 	margin: 0px;
 }
+
+div.wrapper {
+	display: grid;
+	grid-template-columns: 1fr 3fr 1fr;
+}
+
+canvas {
+	grid-column: 2;
+}
+
+div.maze, div.solver{
+	justify-content: center;
+	display: grid;
+}
+
+h1 {
+	color: white;
+}
