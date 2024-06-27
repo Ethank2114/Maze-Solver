@@ -7,8 +7,23 @@ function randInt(min, max) {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function randElement(list) {
-	return list[Math.floor(Math.random()*list.length)];
+// function randElement(list) {
+// 	return list[Math.floor(Math.random()*list.length)];
+// }
+
+function shuffle(array) {
+   return array.sort( () => Math.random() - 0.5 );
+}
+
+function randUnvistedNode(list) {
+	let nodeList = shuffle(list);
+
+	for(let node of nodeList) {
+		if(node.visited === false) {
+			return node;
+		}
+	}
+	return null;
 }
 
 function remove(item, list) {
@@ -28,6 +43,10 @@ class Stack {
 	pop() {
 		return this.contents.pop();
 	}
+
+	length() {
+		return this.contents.length;
+	}
 }
 
 class MazeAlgorithm {
@@ -40,7 +59,7 @@ class MazeAlgorithm {
 
 class Backtracking extends MazeAlgorithm {
 	static map;
-	static currentNode;
+	static current;
 
 	static stack = new Stack();
 	constructor(map, startNode) {
@@ -48,39 +67,49 @@ class Backtracking extends MazeAlgorithm {
 	}
 
 	static iterate() {
+		/*
+	
+		select random unvisited node
+		create path between nodes 
+		mark as visited
+		add current to stack
 
-		let nextNode = randElement(this.currentNode.neighbours);
-		this.currentNode.visited = true;
+		if no unvisted left
+			pull from stack until finds node with unvisited neighbours
 
-		console.dir(nextNode)
+		*/
 
-		// if node is unvisited
-		if(!nextNode.visited) {
-			for(let node of this.currentNode.neighbours) {
-				if(!node.visited) {
-					this.stack.push(node);
+		let next = randUnvistedNode(this.current.neighbours);
+
+		if(next === null) {
+			while(this.stack.length() > 0) {
+				let possibleCurrent = this.stack.pop()
+				let possibleNext = randUnvistedNode(possibleCurrent.neighbours);
+				if(possibleNext !== null) {
+					this.current = possibleCurrent;
+					next = possibleNext;
+					break;
 				}
 			}
-
-			remove(nextNode, this.currentNode.neighbours);
-			remove(this.currentNode, nextNode.neighbours);
-
-			this.currentNode.edges.push(nextNode);
-			nextNode.edges.push(this.currentNode);
-
-			this.currentNode = nextNode;
-
-		// node is visited
-		} else {
-			this.currentNode = this.stack.pop();
 		}
 
-		if(this.currentNode === undefined) {
+		if(next === null) {
 			return false;
 		}
 
-		console.log(this.currentNode.neighbours);
-		console.log(nextNode);
+		// mark new node as visited
+		next.visited = true;
+
+		// create path between nodes
+		this.current.edges.push(next);
+		next.edges.push(this.current);
+
+		// add current to stack
+		this.stack.push(this.current)
+
+		this.current = next;
+
+		return true;
 	}
 }
 
@@ -99,7 +128,7 @@ class Scene {
 		this.canvas = canvas;
 		this.context = canvas.getContext("2d");
 		this.map = null;
-		this.tileSize = 20;
+		this.tileSize = 1;
 		this.mazeAlgorithm = null;
 
 		this.populateMap();
@@ -162,7 +191,8 @@ class Scene {
 	setAlgorithm(algo) {
 		this.mazeAlgorithm = algo;
 		this.mazeAlgorithm.map = this.map;
-		this.mazeAlgorithm.currentNode = this.map[0][0];
+		this.mazeAlgorithm.current = this.map[0][0];
+		this.mazeAlgorithm.current.visited = true;
 	}
 
 	iterate() {
@@ -181,7 +211,7 @@ function main() {
 	setInterval(function() {
 		theScene.iterate();
 		theScene.drawMap();
-	}, 1000);
+	}, 0.01);
 
 }
 
