@@ -3,6 +3,24 @@ function drawRect({context, x, y, width, height, color="white"}) {
 	context.fillRect(x, y, width, height);
 }
 
+function drawLine({context, x1, y1, x2, y2, p1=undefined, p2=undefined, color="Black"}) {
+	context.lineWidth = 3;
+
+	context.beginPath();
+	// by points
+	if(p1 !== undefined && p2 !== undefined) {
+		context.moveTo(p1.x, p1.y);
+		context.lineTo(p2.x, p2.y);
+	// by x1, y1
+	} else {
+		context.moveTo(x1, y1);
+		context.lineTo(x2, y2);
+	}
+	
+	context.strokeStyle = color;
+	context.stroke();
+}
+
 function randInt(min, max) {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -58,6 +76,8 @@ function mixColor(oldColor, strength = 1) {
 }
 
 class Stack {
+	contents;
+
 	constructor() {
 		this.contents = []
 	}
@@ -75,13 +95,82 @@ class Stack {
 	}
 }
 
-class MazeAlgorithm {
-	constructor(map, startNode) {
-		this.map = map;
-		this.startNode = startNode;
+class SolverAlgorithm {}
+
+class DepthFirst extends SolverAlgorithm {
+	static start;
+	static end;
+	static current;
+	
+	static stack;
+
+	static path = [];
+
+	static constructor(start, end) {
+		this.start = start;
+		this.end = end;
+		this.stack = new Stack();
+
+		this.current = this.start;
+		this.stack.push(this.current);
 	}
 
+	static iterate(scene) {
+		/*
+		start at the current
+		pop the last from stack
+		check for match, if found return
+		add edges to stack
+		repeat until match or stack empty
+		*/
+
+		if(this.current === this.end) {
+			this.stack.push(this.current);
+			return this.stack.contents;
+		}
+
+		let next = randUnvistedNode(this.current.edges);
+
+		if(next === null) {
+			while(this.stack.length() > 0) {
+				let possibleCurrent = this.stack.pop()
+				let possibleNext = randUnvistedNode(possibleCurrent.edges);
+				if(possibleNext !== null) {
+					this.current = possibleCurrent;
+					next = possibleNext;
+					break;
+				}
+			}
+		}
+
+		if(next === null) {
+			return false;
+		}
+
+		// mark new node as visited
+		next.visited = true;
+
+		// create path between nodes
+		this.current.edges.push(next);
+		next.edges.push(this.current);
+
+		// add current to stack
+		this.stack.push(this.current)
+		
+		next.color = mixColor(this.current.color, 5);
+
+		this.current.draw(scene.context, scene.tileSize);
+		this.current.drawEdges(scene.context, scene.tileSize);
+
+		this.current = next;
+
+		return true;
+
+	}
 }
+
+class MazeAlgorithm {}
+
 
 class Backtracking extends MazeAlgorithm {
 	static map;
@@ -138,8 +227,6 @@ class Backtracking extends MazeAlgorithm {
 		this.current.draw(scene.context, scene.tileSize);
 		this.current.drawEdges(scene.context, scene.tileSize);
 
-		
-
 		this.current = next;
 
 		return true;
@@ -154,6 +241,12 @@ class Node {
 		this.visited = false;
 		this.edges = [];
 		this.color = "white";
+	}
+
+	getUnvistedEdges() {
+		return this.edges.filter(function(node) {
+			return !node.visited;
+		});
 	}
 
 	draw(context, tileSize) {
@@ -193,6 +286,9 @@ class Scene {
 		this.map = null;
 		this.tileSize = TILE_SIZE;
 		this.mazeAlgorithm = null;
+		this.solverAlgorithm = null;
+
+		this.solution;
 
 		this.populateMap();
 	}
@@ -260,7 +356,15 @@ class Scene {
 		}
 	}
 
-	setAlgorithm(algo) {
+	clearVisited() {
+		for(let row of this.map) {
+			for(let node of row) {
+				node.visited = false;
+			}
+		}
+	}
+
+	setMaze(algo) {
 		this.mazeAlgorithm = algo;
 		this.mazeAlgorithm.map = this.map;
 		this.mazeAlgorithm.current = this.map[0][0];
@@ -268,8 +372,48 @@ class Scene {
 		// this.mazeAlgorithm.current.color = "rgb(66, 220, 200)";
 	}
 
-	iterate() {
-		this.mazeAlgorithm.iterate(this);
+	setSolver(algo) {
+		this.solverAlgorithm = algo;
+		let start = this.map[0][0];
+		let end = this.map[this.map.length - 1][this.map[0].length - 1];
+		this.solverAlgorithm.constructor(start, end);
+		this.solverAlgorithm.current.color = "rgb(66, 220, 200)";
+
+	}
+
+	setSolution(solution) {
+		this.solution = solution;
+	}
+
+	iterateMaze() {
+		return this.mazeAlgorithm.iterate(this);
+	}
+
+	iterateSolver() {
+		return this.solverAlgorithm.iterate(this);
+	}
+
+	drawSolution() {
+		for(let i = 0; i < this.solution.length - 1; i++) {
+
+			console.log(i);
+
+			let p1 = {
+				x: (2 * this.solution[i].x + (3/2)) * this.tileSize, 
+				y: (2 * this.solution[i].y + (3/2)) * this.tileSize
+			};
+			let p2 = {
+				x: (2 * this.solution[i + 1].x + (3/2)) * this.tileSize, 
+				y: (2 * this.solution[i + 1].y + (3/2)) * this.tileSize
+			};
+
+			drawLine({
+				context: this.context,
+				p1: p1,
+				p2: p2,
+				color: "red"
+			})
+		}	
 	}
 }
 
@@ -277,17 +421,42 @@ function main() {
 	let canvas = document.getElementById("canvas");
 	let theScene = new Scene(canvas);
 
-	console.log(theScene.map);
+	theScene.setMaze(Backtracking);
+	theScene.setSolver(DepthFirst);
 
-	theScene.setAlgorithm(Backtracking);
-
-	let ptr = setInterval(function() {
+	var ptr = setInterval(function() {
 		for(let i = 0; i < SPEED; i++) {
-			theScene.iterate();
+			if(!theScene.iterateMaze()) {
+				done1();
+			}
 		}
 		
 	}, REFRESH_RATE);
 
+	function done1() {
+		clearInterval(ptr);
+
+		theScene.clearVisited();
+
+		ptr = setInterval(function() {
+			for(let i = 0; i < SPEED; i++) {
+
+				let ret = theScene.iterateSolver();
+
+				if(ret !== true && ret !== false) {
+					done2();
+					theScene.setSolution(ret);
+					theScene.drawSolution();
+				}
+			}
+			
+		}, 10);
+	}
+
+	function done2() {
+		clearInterval(ptr);
+
+	}
 }
 
 main();
