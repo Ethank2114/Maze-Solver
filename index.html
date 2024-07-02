@@ -8,10 +8,24 @@
 	<div class="wrapper">
 		<div class="maze">
 			<h1>Maze</h1>
+			<div class="controls">
+				<label for="mazeTypes">Maze Type</label>
+				<select name="Maze Types" id="mazeTypes">
+					<option value="backtracking">Backtracking</option>
+					<option value="prims">Prims Algorithm</option>
+				</select>
+			</div>
 		</div>
 		<canvas id="canvas" width=1000px height=1000px></canvas>
 		<div class="solver">
 			<h1>Solver</h1>
+			<div class="controls">
+				<label for="solverTypes">Solver Type</label>
+				<select name="Solver Types" id="solverTypes">
+					<option value="depthFirst">Depth First</option>
+					<option value="breadthFirst">Breadth First</option>
+				</select>
+			</div>
 		</div>
 	</div>
 
