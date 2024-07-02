@@ -3,8 +3,8 @@ function drawRect({context, x, y, width, height, color="white"}) {
 	context.fillRect(x, y, width, height);
 }
 
-function drawLine({context, x1, y1, x2, y2, p1=undefined, p2=undefined, color="Black"}) {
-	context.lineWidth = 3;
+function drawLine({context, x1, y1, x2, y2, p1=undefined, p2=undefined, width=1, color="Black"}) {
+	context.lineWidth = width;
 
 	context.beginPath();
 	// by points
@@ -157,7 +157,7 @@ class DepthFirst extends SolverAlgorithm {
 		// add current to stack
 		this.stack.push(this.current)
 		
-		next.color = mixColor(this.current.color, 5);
+		next.color = mixColor(this.current.color, COLORVARIENCE);
 
 		this.current.draw(scene.context, scene.tileSize);
 		this.current.drawEdges(scene.context, scene.tileSize);
@@ -171,14 +171,16 @@ class DepthFirst extends SolverAlgorithm {
 
 class MazeAlgorithm {}
 
-
 class Backtracking extends MazeAlgorithm {
-	static map;
-	static current;
 
-	static stack = new Stack();
-	constructor(map, startNode) {
-		super(map, startNode);
+	static current;
+	static stack;
+
+	static constructor(root) {
+		this.root = root;
+		this.current = this.root;
+		this.stack = new Stack();
+		this.current.visited = true;
 	}
 
 	static iterate(scene) {
@@ -275,9 +277,10 @@ class Node {
 	}
 }
 
-var TILE_SIZE = 20;
-var REFRESH_RATE = 5;
+var TILE_SIZE = 10;
+var REFRESH_RATE = 1;
 var SPEED = 1;
+var COLORVARIENCE = 5;
 
 class Scene {
 	constructor(canvas) {
@@ -366,10 +369,10 @@ class Scene {
 
 	setMaze(algo) {
 		this.mazeAlgorithm = algo;
-		this.mazeAlgorithm.map = this.map;
-		this.mazeAlgorithm.current = this.map[0][0];
-		this.mazeAlgorithm.current.visited = true;
-		// this.mazeAlgorithm.current.color = "rgb(66, 220, 200)";
+		let middle = Math.floor(this.map.length / 2);
+		// let start = this.map[0][0];
+		let start = this.map[middle][middle];
+		this.mazeAlgorithm.constructor(start);
 	}
 
 	setSolver(algo) {
@@ -396,8 +399,6 @@ class Scene {
 	drawSolution() {
 		for(let i = 0; i < this.solution.length - 1; i++) {
 
-			console.log(i);
-
 			let p1 = {
 				x: (2 * this.solution[i].x + (3/2)) * this.tileSize, 
 				y: (2 * this.solution[i].y + (3/2)) * this.tileSize
@@ -411,7 +412,8 @@ class Scene {
 				context: this.context,
 				p1: p1,
 				p2: p2,
-				color: "red"
+				color: "red",
+				width: 2
 			})
 		}	
 	}
@@ -450,7 +452,7 @@ function main() {
 				}
 			}
 			
-		}, 10);
+		}, REFRESH_RATE);
 	}
 
 	function done2() {
